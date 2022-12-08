@@ -1,4 +1,3 @@
-
 /*
  * _MATRIXMUL_GPU_CU_
  *
@@ -16,17 +15,18 @@
 #include <stdlib.h>
 
 // ------------------------------------------------------------------ GPUmatmul
-//Implemented threads by using stride 
 __global__
 void GPUmatmul(int N, double *x, double *y, double *ans)
 {
-int indexx=threadIdx.x;
-int indexy=threadIdx.y;
-int stridex= blockDim.x;
-int stridey= blockDim.y;
-for (int i= indexx; i <N; i+=stridex)
+//used stride to implement threads.
+int sx= blockDim.x;
+int sy= blockDim.y;
+int ix=threadIdx.x;
+int iy=threadIdx.y;
+
+for (int i= ix; i <N; i+=sx)
 {
-   for (int j= indexy;j<N;j+=stridey)
+   for (int j= iy;j<N;j+=sy)
     {  for (int k=0;k<N;k++)
         {
             ans[i*N+j]+=(x[i*N+k]*y[k*N+j]);
@@ -34,8 +34,6 @@ for (int i= indexx; i <N; i+=stridex)
     }
 }
 }
-
-
 
 // ---------------------------------------------------------------------- check
 bool check(int N, double *ans)
@@ -63,6 +61,7 @@ int main(void)
   cudaMallocManaged(&x,sizeof(double)*N*N);
   cudaMallocManaged(&y,sizeof(double)*N*N);
   cudaMallocManaged(&ans,sizeof(double)*N*N);
+
     // ..........................................................................
   // initialize x,y and ans arrays on the host
   for (int i = 0; i < N; i++) {
@@ -79,7 +78,7 @@ int main(void)
   // Run kernel on GPU
   for(int i = 0; i <= iter; i++) {
     t = clock();
-    GPUmatmul<<<1,256>>>(N, x, y,ans);   //Changed threads to 256
+    GPUmatmul<<<1,256>>>(N, x, y,ans);   //Threads have been increased to 256.
     cudaDeviceSynchronize();
     t = clock() - t;
     if(i) avg += t; //we will ignore the first run
@@ -96,8 +95,6 @@ int main(void)
   // ..........................................................................
 
   // Free memory
-  // ...
-
   cudaFree(x);
   cudaFree(y);
   cudaFree(ans);

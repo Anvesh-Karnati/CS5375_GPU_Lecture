@@ -17,16 +17,16 @@
 // ------------------------------------------------------------------ GPUmatmul
 __global__ void GPUmatmul(int N, double *x, double *y, double *ans)
 {
-  // Compute each thread's global row and column index
-  int row = blockIdx.y * blockDim.y + threadIdx.y;
-  int col = blockIdx.x * blockDim.x + threadIdx.x;
+  // Calculate the global row and column index for each thread.
+  int i = blockIdx.y * blockDim.y + threadIdx.y;
+  int j = blockIdx.x * blockDim.x + threadIdx.x;
 
-  // Iterate over row, and down column
-  ans[row * N + col] = 0;
+  // repeat the row and column iterations
+  ans[i * N + j] = 0;
   for (int k = 0; k < N; k++)
   {
-    // Accumulate results for a single element
-    ans[row * N + col] += x[row * N + k] * y[k * N + col];
+    // Compile results for a single element.
+    ans[i * N + j] += x[i * N + k] * y[k * N + j];
   }
 }
 
@@ -63,14 +63,13 @@ int main(void)
 
   // ..........................................................................
   // initialize x,y and ans arrays on the host
+  int dev = -1;
   cudaMallocManaged((void **)&x, sizeof(float) * N * N);
   cudaMallocManaged((void **)&y, sizeof(float) * N * N);
   cudaMallocManaged((void **)&ans, sizeof(float) * N * N);
-
-  int device = -1;
-  cudaMemPrefetchAsync(x, sizeof(float) * N * N, device, NULL);
-  cudaMemPrefetchAsync(y, sizeof(float) * N * N, device, NULL);
-  cudaMemPrefetchAsync(ans, sizeof(float) * N * N, device, NULL);
+  cudaMemPrefetchAsync(x, sizeof(float) * N * N, dev, NULL);
+  cudaMemPrefetchAsync(y, sizeof(float) * N * N, dev, NULL);
+  cudaMemPrefetchAsync(ans, sizeof(float) * N * N, dev, NULL);
   for (int i = 0; i < N; i++)
   {
     for (int j = 0; j < N; j++)
@@ -81,19 +80,19 @@ int main(void)
     }
   }
 
-  int blockSize = 16; // 16*16 = 256
-  int gridSize = (int)ceil(N / blockSize);
+  int size_block = 16; // 16*16 = 256
+  int size_grid = (int)ceil(N / size_block);
   // ..........................................................................
   double avg = 0;
   std::cout << "Starting optimized GPU computation" << std::endl;
 
-  dim3 grid(gridSize, gridSize);
-  dim3 threads(blockSize, blockSize);
-  // Run kernel on GPU
+  dim3 gridSize(size_grid, size_grid);
+  dim3 threadsBlock(size_block, size_block);
+  // Run the kernel on the GPU
   for (int i = 0; i <= iter; i++)
   {
     t = clock();
-    GPUmatmul<<<grid, threads>>>(N, x, y, ans);
+    GPUmatmul<<<gridSize, threadsBlock>>>(N, x, y, ans);
     cudaDeviceSynchronize();
     t = clock() - t;
     if (i)
@@ -114,9 +113,6 @@ int main(void)
   // ..........................................................................
 
   // TODO: Free memory
-  // ...
-  // ...
-  // ...
   cudaFree(x);
   cudaFree(y);
   cudaFree(ans);

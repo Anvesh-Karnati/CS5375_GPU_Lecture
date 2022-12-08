@@ -18,12 +18,12 @@
 // ------------------------------------------------------------------ GPUmatmul
 __global__
 void GPUmatmul(int N, double *x, double *y, double *ans)
-{  int indexx = blockIdx.x * blockDim.x + threadIdx.x;
-  int stridex = blockDim.x * gridDim.x;
-    int indexy = blockIdx.y * blockDim.y + threadIdx.y;
-  int stridey = blockDim.y * gridDim.y;
-  for(int i = indexx; i < N; i+=stridex) {
-    for(int j = indexy; j < N; j+=stridey) {
+{  int ix = blockIdx.x * blockDim.x + threadIdx.x;
+  int sx = blockDim.x * gridDim.x;
+    int iy = blockIdx.y * blockDim.y + threadIdx.y;
+  int sy = blockDim.y * gridDim.y;
+  for(int i = ix; i < N; i+=sx) {
+    for(int j = iy; j < N; j+=sy) {
       for(int k = 0; k < N; k++) {
         ans[i*N+j] += (x[i*N+k] * y[k*N+j]);
       }
@@ -77,9 +77,9 @@ int main(void)
   // Run kernel on GPU
   for(int i = 0; i <= iter; i++) {
     t = clock();
-    int blockSize=256;
-    int numBlocks=(N+blockSize-1)/blockSize;
-    GPUmatmul<<<numBlocks,blockSize>>>(N, x, y,ans);
+    int size_block=256;
+    int block_number=(N+size_block-1)/size_block;
+    GPUmatmul<<<block_number,size_block>>>(N, x, y,ans);
     cudaDeviceSynchronize();
     t = clock() - t;
     if(i) avg += t; //we will ignore the first run
@@ -95,10 +95,6 @@ int main(void)
   // ..........................................................................
 
   // TODO: Free memory
-  // ...
-  // ...
-  // ...
-
   cudaFree(x);
   cudaFree(y);
   cudaFree(ans);
